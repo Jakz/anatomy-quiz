@@ -8,9 +8,15 @@ public class PointMapper
   
   public PointMapper()
   {
+    
   }
   
-  Point2D.Float map(int x, int y)
+  Point2D.Float map(Point2D.Float pt)
+  {
+    return map(pt.x, pt.y);
+  }
+  
+  Point2D.Float map(float x, float y)
   {
     /* before image */
     if (x < this.x || y < this.y)
@@ -19,6 +25,17 @@ public class PointMapper
       return null;
     else
       return new Point2D.Float((x - this.x) / (float) this.bw, (y - this.y) / (float) this.bh);
+  }
+  
+  Point2D.Float rasterize(Point2D.Float pt)
+  { 
+    return rasterize(pt.x, pt.y);
+  }
+
+  
+  Point2D.Float rasterize(float x, float y)
+  {
+    return new Point2D.Float(x * bw + this.x, y * bh + this.y);
   }
   
   void set(int x, int y, int bw, int bh)
