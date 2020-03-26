@@ -5,11 +5,16 @@ import java.awt.geom.Rectangle2D;
 class Zone
 {
   public final String name;
-  public final Rectangle2D.Float area;
+  public final Rectangle2D.Float bounds;
   
   public Zone(String name, float x, float y, float w, float h)
   {
     this.name = name;
-    area = new Rectangle2D.Float(x, y, w, h);
+    bounds = new Rectangle2D.Float(x, y, w, h);
+  }
+  
+  public String toString()
+  {
+    return String.format("{%s, %2.2f, %2.2f, %2.2f, %2.2f}", name, bounds.x, bounds.y, bounds.width, bounds.height);
   }
 }

@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -22,8 +23,17 @@ import javax.swing.JLabel;
 
 class QuizImage extends JLabel implements MouseListener, MouseMotionListener
 {
+  enum Mode
+  {
+    ADD_ZONE,
+    REMOVE_ZONE
+  };
+  
+  Mode mode = Mode.ADD_ZONE;
+  
+  QuizTable table;
+  
   BufferedImage image;
-  List<Zone> areas;
   
   PointMapper mapper;
   ZoneCreator creator;
@@ -31,11 +41,11 @@ class QuizImage extends JLabel implements MouseListener, MouseMotionListener
   Point2D.Float mousePosition;
   
   
-  public QuizImage(String image)
+  public QuizImage(QuizTable table)
   {
     try
     {
-      this.image = ImageIO.read(new File(image));
+      this.image = ImageIO.read(new File(table.imageName));
       mapper = new PointMapper();
       computeMapping();
     }
@@ -44,9 +54,7 @@ class QuizImage extends JLabel implements MouseListener, MouseMotionListener
       e.printStackTrace();
     }
     
-    areas = new ArrayList<>();
-    areas.add(new Zone("test", 0.05f, 0.05f, 0.1f, 0.1f));
-    
+    this.table = table;
     creator = new ZoneCreator();
     
     this.addComponentListener(new ComponentAdapter() {
@@ -90,6 +98,11 @@ class QuizImage extends JLabel implements MouseListener, MouseMotionListener
     g.drawLine((int)x1, (int)y1, (int)x2, (int)y2);
   }
   
+  private void rect(Graphics2D g, float x1, float y1, float x2, float y2)
+  {
+    g.drawRect((int)x1, (int)y1, (int)x2, (int)y2);
+  }
+  
   @Override
   public void paintComponent(Graphics og)
   {
@@ -100,10 +113,14 @@ class QuizImage extends JLabel implements MouseListener, MouseMotionListener
     g.setStroke(new BasicStroke(3.0f));
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     
-    for (Zone poi : areas)
+    for (Zone poi : table.zones)
     {
       g.setColor(Color.RED);
-      g.drawRect((int)(mapper.x + poi.area.x * mapper.bw), (int)(mapper.y + poi.area.y * mapper.bh), (int)( poi.area.width * mapper.bw), (int)( poi.area.height * mapper.bh));
+      
+      Point2D.Float origin = mapper.rasterize(poi.bounds.x, poi.bounds.y);
+      Point2D.Float end = mapper.rasterize(poi.bounds.x + poi.bounds.width, poi.bounds.y + poi.bounds.height);
+      
+      rect(g, origin.x, origin.y, end.x - origin.x, end.y - origin.y);  
     }
     
     
@@ -141,16 +158,45 @@ class QuizImage extends JLabel implements MouseListener, MouseMotionListener
   @Override
   public void mousePressed(MouseEvent e)
   {
-    if (e.getButton() == MouseEvent.BUTTON3)
-      creator.cancel();
-    else
+    final Point2D.Float pt = mapper.map(e.getX(), e.getY());
+
+    switch (mode)
     {
-      Point2D.Float pt = mapper.map(e.getX(), e.getY());
-            
-      if (pt != null)
-        creator.add(pt);
+      case ADD_ZONE:
+      {
+        if (e.getButton() == MouseEvent.BUTTON3)
+          creator.cancel();
+        else
+        {                
+          if (pt != null)
+          {
+            Zone zone = creator.add(pt);
+          
+            if (zone != null)
+            {
+              System.out.println(zone);
+              
+              table.zones.add(zone);
+              creator.reset();
+            }
+          }
+        }
+        
+        break;
+      }
+      case REMOVE_ZONE:
+      {
+        if (e.getButton() == MouseEvent.BUTTON1 && pt != null)
+        {
+          table.zoneAt(pt).ifPresent(zone -> table.zones.remove(zone));
+        }
+        
+        break;
+      }
+
     }
-   
+
+
     repaint();
   }
 
@@ -158,6 +204,27 @@ class QuizImage extends JLabel implements MouseListener, MouseMotionListener
   public void mouseMoved(MouseEvent e)
   {
     mousePosition = mapper.map(e.getX(), e.getY());
+    
+    switch (mode)
+    {
+      case ADD_ZONE: break;
+      
+    }
+    
+    
     repaint();
+  }
+  
+  public class KeyListener implements java.awt.event.KeyListener
+  {
+    @Override public void keyTyped(KeyEvent e) { }
+    @Override public void keyReleased(KeyEvent e) { }
+
+    @Override
+    public void keyPressed(KeyEvent e)
+    {
+      if (e.getKeyChar() == '1') mode = Mode.ADD_ZONE;
+      else if (e.getKeyChar() == '2') mode = Mode.REMOVE_ZONE;
+    }
   }
 }
